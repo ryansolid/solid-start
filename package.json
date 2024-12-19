@@ -11,21 +11,32 @@
   },
   "private": true,
   "scripts": {
+    "bump": "node scripts/bump.js",
+    
+    "build": "pnpm run packages:build",
+    "build:all": "pnpm run packages:build && pnpm run examples:build && pnpm run docs:build",
+    
     "clean": "pnpm run clean:all",
-    "clean:root": "rimraf node_modules",
-    "clean:all": "rimraf ./node_modules ./*/**/node_modules",
-    "docs:dev": "pnpm --filter solid-start-docs dev",
-    "docs:build": "pnpm --filter solid-start-docs build",
-    "docs:start": "pnpm --filter solid-start-docs start",
+    "clean:all": "pnpm run examples:clean && pnpm run packages:clean && pnpm run clean:root",
+    "clean:root": "pnpx rimraf ./node_modules ./.vinxi/ ./.output/",
+    
+    "docs:dev": "vinxi dev",
+    "docs:build": "vinxi build",
+    "docs:start": "node ./.output/server/index.mjs",
     "docs:clean": "pnpx rimraf ./docs/node_modules ./docs/.vinxi/ ./docs/.output/",
-    "clean:test": "rimraf .tmp",
-    "build": "pnpm --filter @solidjs/start build",
-    "build:all": "pnpm run build && pnpm --filter './examples/*' --if-present build",
+    
+    "examples:build": "pnpm --filter './examples/*' --if-present build",
+    "examples:clean": "pnpx rimraf ./examples/*/node_modules/ ./examples/*/.vinxi/ ./examples/*/.output/",
+    "examples:use-workspace-package": "node ./util/use-workspace-package-in-examples.js",
+    
+    "packages:build": "pnpm --filter @solidjs/start build",
+    "packages:clean": "pnpx rimraf ./packages/*/node_modules/ ./packages/*/dist/",
+    
     "install:playwright": "pnpm --filter solid-start-tests run install:playwright",
+    "clean:test": "pnpx rimraf .tmp",
     "test:all": "pnpm run clean:test && cross-env START_ADAPTER=solid-start-node npm run test",
     "test": "pnpm run clean:test && pnpm --filter solid-start-tests test --",
-    "show:test-report": "pnpm --filter solid-start-tests show:test-report",
-    "bump": "node scripts/bump.js"
+    "show:test-report": "pnpm --filter solid-start-tests show:test-report"
   },
   "devDependencies": {
     "@changesets/cli": "^2.25.2",
@@ -34,7 +45,6 @@
     "coveralls": "^3.1.1",
     "debug": "^4.3.4",
     "graphql": "^16.7.1",
-    "rimraf": "^3.0.2",
     "tinyglobby": "^0.2.2",
     "tippy.js": "^6.3.7",
     "turbo": "^1.10.7",
