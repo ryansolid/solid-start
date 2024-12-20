@@ -20,9 +20,9 @@
     "clean:all": "pnpm run examples:clean && pnpm run packages:clean && pnpm run clean:root",
     "clean:root": "pnpx rimraf ./node_modules ./.vinxi/ ./.output/",
     
-    "docs:dev": "vinxi dev",
-    "docs:build": "vinxi build",
-    "docs:start": "node ./.output/server/index.mjs",
+    "docs:dev": "pnpm --filter solid-start-docs dev",
+    "docs:build": "pnpm --filter solid-start-docs build",
+    "docs:start": "pnpm --filter solid-start-docs start",
     "docs:clean": "pnpx rimraf ./docs/node_modules ./docs/.vinxi/ ./docs/.output/",
     
     "examples:build": "pnpm --filter './examples/*' --if-present build",
