@@ -21,6 +21,7 @@ on:
 jobs:
   typecheck:
     name: "👀 Typecheck"
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.changed_files != 0)
 
     runs-on: ubuntu-latest
 
