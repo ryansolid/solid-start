@@ -27,10 +27,8 @@ function wrapRequestMiddleware(onRequest: RequestMiddleware) {
   return async (h3Event: HTTPEvent) => {
     const fetchEvent = getFetchEvent(h3Event);
     const response = await onRequest(fetchEvent);
-    if (!response) {
-      return;
-    } else {
-      sendWebResponse(h3Event, response);
+    if (response) {
+      await sendWebResponse(h3Event, response);
     }
   };
 }
@@ -39,10 +37,8 @@ function wrapResponseMiddleware(onBeforeResponse: ResponseMiddleware) {
   return async (h3Event: HTTPEvent, response: ResponseMiddlewareResponseParam) => {
     const fetchEvent = getFetchEvent(h3Event);
     const mwResponse = await onBeforeResponse(fetchEvent, response);
-    if (!mwResponse) {
-      return;
-    } else {
-      sendWebResponse(h3Event, mwResponse);
+    if (mwResponse) {
+      response.body = mwResponse;
     }
   };
 }
