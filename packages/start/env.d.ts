@@ -4,6 +4,12 @@
 
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 
+declare namespace App {
+  export interface RequestEventLocals {
+    [key: string | symbol]: any;
+  }
+}
+
 interface ImportMetaEnv extends Record<`VITE_${string}`, any>, SolidStartMetaEnv {
   BASE_URL: string;
   MODE: string;

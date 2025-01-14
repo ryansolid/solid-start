@@ -1,1 +1,7 @@
-/// <reference types="@solidjs/start/env" />
+declare module App {
+  interface RequestEventLocals {
+    /**
+     * Declare your getRequestEvent().locals here
+     */
+  }
+}

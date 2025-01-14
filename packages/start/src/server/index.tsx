@@ -3,16 +3,7 @@ export { StartServer } from "./StartServer";
 export { createHandler } from "./handler";
 export { getServerFunctionMeta } from "./serverFunction";
 export type {
-  DocumentComponentProps,
-  Asset,
-  HandlerOptions,
-  ContextMatches,
-  ResponseStub,
-  FetchEvent,
-  RequestEventLocals,
-  PageEvent,
   APIEvent,
-  APIHandler,
-  ServerFunctionMeta
+  APIHandler, Asset, ContextMatches, DocumentComponentProps, FetchEvent, HandlerOptions, PageEvent, ResponseStub, ServerFunctionMeta
 } from "./types";
 

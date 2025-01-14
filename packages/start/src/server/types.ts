@@ -42,16 +42,15 @@ export interface ResponseStub {
   statusText?: string;
   headers: Headers;
 }
+
 export interface FetchEvent {
   request: Request;
   response: ResponseStub;
   clientAddress?: string;
-  locals: RequestEventLocals;
+  locals: App.RequestEventLocals;
   nativeEvent: HTTPEvent;
 }
-export interface RequestEventLocals {
-  [key: string | symbol]: any;
-}
+
 export interface PageEvent extends RequestEvent {
   manifest: any;
   assets: any;
