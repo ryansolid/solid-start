@@ -1,5 +1,4 @@
-import { serverFunctions } from "@vinxi/server-functions/plugin";
-import { server as serverFunctionServer, serverTransform } from "@vinxi/server-functions/server";
+import { createTanStackServerFnPlugin } from "@tanstack/server-functions-plugin";
 import defu from "defu";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -37,6 +36,35 @@ function solidStartServerFsRouter(config) {
       app
     );
 }
+const SolidStartServerFnsPlugin = createTanStackServerFnPlugin({
+  // This is the ID that will be available to look up and import
+  // our server function manifest and resolve its module
+  manifestVirtualImportId: "solidstart:server-fn-manifest",
+  client: {
+    getRuntimeCode: () =>
+      `import { createServerReference } from "${normalize(
+        fileURLToPath(new URL("../dist/runtime/server-runtime.js", import.meta.url))
+      )}"`,
+    replacer: opts =>
+      `createServerReference($$fn$$, '${opts.functionId}', '${opts.extractedFilename}')`
+  },
+  ssr: {
+    getRuntimeCode: () =>
+      `import { createServerReference } from '${normalize(
+        fileURLToPath(new URL("../dist/runtime/server-fns-runtime.js", import.meta.url))
+      )}'`,
+    replacer: opts =>
+      `createServerReference($$fn$$, '${opts.functionId}', '${opts.extractedFilename}')`
+  },
+  server: {
+    getRuntimeCode: () =>
+      `import { createServerReference } from '${normalize(
+        fileURLToPath(new URL("../dist/runtime/server-fns-runtime.js", import.meta.url))
+      )}'`,
+    replacer: opts =>
+      `createServerReference($$fn$$, '${opts.functionId}', '${opts.extractedFilename}')`
+  }
+});
 
 export function defineConfig(baseConfig = {}) {
   let { vite = {}, ...start } = baseConfig;
@@ -112,11 +140,7 @@ export function defineConfig(baseConfig = {}) {
               }
             }),
             ...plugins,
-            serverTransform({
-              runtime: normalize(
-                fileURLToPath(new URL("../dist/runtime/server-fns-runtime.js", import.meta.url))
-              )
-            }),
+            SolidStartServerFnsPlugin.ssr,
             start.experimental.islands ? serverComponents.server() : null,
             solid({ ...start.solid, ssr: true, extensions: extensions.map(ext => `.${ext}`) }),
             config("app-server", {
@@ -177,11 +201,7 @@ export function defineConfig(baseConfig = {}) {
               }
             }),
             ...plugins,
-            serverFunctions.client({
-              runtime: normalize(
-                fileURLToPath(new URL("../dist/runtime/server-runtime.js", import.meta.url))
-              )
-            }),
+            SolidStartServerFnsPlugin.client,
             start.experimental.islands ? serverComponents.client() : null,
             solid({ ...start.solid, ssr: start.ssr, extensions: extensions.map(ext => `.${ext}`) }),
             config("app-client", {
@@ -247,11 +267,7 @@ export function defineConfig(baseConfig = {}) {
               cacheDir: "node_modules/.vinxi/server-fns"
             }),
             ...plugins,
-            serverFunctionServer({
-              runtime: normalize(
-                fileURLToPath(new URL("../dist/runtime/server-fns-runtime.js", import.meta.url))
-              )
-            }),
+            SolidStartServerFnsPlugin.server,
             start.experimental.islands ? serverComponents.server() : null,
             solid({ ...start.solid, ssr: true, extensions: extensions.map(ext => `.${ext}`) }),
             config("app-server", {

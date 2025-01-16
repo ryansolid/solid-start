@@ -16,13 +16,21 @@ import {
 import { sharedConfig } from "solid-js";
 import { renderToString } from "solid-js/web";
 import { provideRequestEvent } from "solid-js/web/storage";
-import { eventHandler, parseCookies, setHeader, setResponseStatus, type HTTPEvent } from "vinxi/http";
+import {
+  eventHandler,
+  parseCookies,
+  setHeader,
+  setResponseStatus,
+  type HTTPEvent
+} from "vinxi/http";
 import invariant from "vinxi/lib/invariant";
 import { cloneEvent, getFetchEvent, mergeResponseHeaders } from "../server/fetchEvent";
 import { getExpectedRedirectStatus } from "../server/handler";
 import { createPageEvent } from "../server/pageEvent";
 // @ts-ignore
 import { FetchEvent, PageEvent } from "../server";
+// @ts-ignore
+import serverFnManifest from "solidstart:server-fn-manifest";
 
 function createChunk(data: string) {
   const encodeData = new TextEncoder().encode(data);
@@ -78,19 +86,28 @@ async function handleServerFunction(h3Event: HTTPEvent) {
   const instance = request.headers.get("X-Server-Instance");
   const singleFlight = request.headers.has("X-Single-Flight");
   const url = new URL(request.url);
-  let filepath: string | undefined | null, name: string | undefined | null;
+  let functionId: string | undefined | null, name: string | undefined | null;
   if (serverReference) {
     invariant(typeof serverReference === "string", "Invalid server function");
-    [filepath, name] = serverReference.split("#");
+    [functionId, name] = serverReference.split("#");
   } else {
-    filepath = url.searchParams.get("id");
+    functionId = url.searchParams.get("id");
     name = url.searchParams.get("name");
-    if (!filepath || !name) throw new Error("Invalid request");
+    if (!functionId || !name) throw new Error("Invalid request");
+  }
+  const serverFnInfo = serverFnManifest[functionId];
+
+  let fnModule: undefined | { [key: string]: any };
+
+  if (process.env.NODE_ENV === "development") {
+    fnModule = await (globalThis as any).app
+      .getRouter("server-fns")
+      .internals.devServer.ssrLoadModule(serverFnInfo.extractedFilename);
+  } else {
+    fnModule = await serverFnInfo.importer();
   }
 
-  const serverFunction = (
-    await import.meta.env.MANIFEST[import.meta.env.ROUTER_NAME]!.chunks[filepath!]!.import()
-  )[name!];
+  const serverFunction = fnModule![serverFnInfo.functionName];
   let parsed: any[] = [];
 
   // grab bound arguments from url when no JS
@@ -100,19 +117,19 @@ async function handleServerFunction(h3Event: HTTPEvent) {
       const json = JSON.parse(args);
       (json.t
         ? (fromJSON(json, {
-          plugins: [
-            CustomEventPlugin,
-            DOMExceptionPlugin,
-            EventPlugin,
-            FormDataPlugin,
-            HeadersPlugin,
-            ReadableStreamPlugin,
-            RequestPlugin,
-            ResponsePlugin,
-            URLSearchParamsPlugin,
-            URLPlugin
-          ]
-        }) as any)
+            plugins: [
+              CustomEventPlugin,
+              DOMExceptionPlugin,
+              EventPlugin,
+              FormDataPlugin,
+              HeadersPlugin,
+              ReadableStreamPlugin,
+              RequestPlugin,
+              ResponsePlugin,
+              URLSearchParamsPlugin,
+              URLPlugin
+            ]
+          }) as any)
         : json
       ).forEach((arg: any) => parsed.push(arg));
     }
@@ -130,7 +147,8 @@ async function handleServerFunction(h3Event: HTTPEvent) {
     const isReadableStream = h3Request instanceof ReadableStream;
     const hasReadableStream = (h3Request as EdgeIncomingMessage).body instanceof ReadableStream;
     const isH3EventBodyStreamLocked =
-      (isReadableStream && h3Request.locked) || (hasReadableStream && ((h3Request as EdgeIncomingMessage).body as ReadableStream).locked);
+      (isReadableStream && h3Request.locked) ||
+      (hasReadableStream && ((h3Request as EdgeIncomingMessage).body as ReadableStream).locked);
     const requestBody = isReadableStream ? h3Request : h3Request.body;
 
     if (
@@ -176,7 +194,7 @@ async function handleServerFunction(h3Event: HTTPEvent) {
       /* @ts-ignore */
       sharedConfig.context = { event };
       event.locals.serverFunctionMeta = {
-        id: filepath + "#" + name
+        id: functionId + "#" + name
       };
       return serverFunction(...parsed);
     });
@@ -254,13 +272,15 @@ function handleNoJS(result: any, request: Request, parsed: any[], thrown?: boole
   if (result) {
     headers.append(
       "Set-Cookie",
-      `flash=${encodeURIComponent(JSON.stringify({
-        url: url.pathname + url.search,
-        result: isError ? result.message : result,
-        thrown: thrown,
-        error: isError,
-        input: [...parsed.slice(0, -1), [...parsed[parsed.length - 1].entries()]]
-      }))}; Secure; HttpOnly;`
+      `flash=${encodeURIComponent(
+        JSON.stringify({
+          url: url.pathname + url.search,
+          result: isError ? result.message : result,
+          thrown: thrown,
+          error: isError,
+          input: [...parsed.slice(0, -1), [...parsed[parsed.length - 1].entries()]]
+        })
+      )}; Secure; HttpOnly;`
     );
   }
   return new Response(null, {
@@ -284,7 +304,7 @@ function createSingleFlightHeaders(sourceEvent: FetchEvent) {
     useH3Internals = true;
     sourceEvent.nativeEvent.node.req.headers.cookie = "";
   }
-  SetCookies.forEach((cookie) => {
+  SetCookies.forEach(cookie => {
     if (!cookie) return;
     const keyValue = cookie.split(";")[0]!;
     const [key, value] = keyValue.split("=");
@@ -293,7 +313,7 @@ function createSingleFlightHeaders(sourceEvent: FetchEvent) {
   Object.entries(cookies).forEach(([key, value]) => {
     headers.append("cookie", `${key}=${value}`);
     useH3Internals && (sourceEvent.nativeEvent.node.req.headers.cookie += `${key}=${value};`);
-  })
+  });
 
   return headers;
 }
